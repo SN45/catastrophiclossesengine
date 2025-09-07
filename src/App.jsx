@@ -184,7 +184,7 @@ export default function App() {
               onKeyDown={onSearchKeyDown}
               onBlur={() => setTimeout(() => setOpenSug(false), 120)}
               placeholder="Search county (e.g., Collin)"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black autofill:bg-white"
             />
             {openSug && suggestions.length > 0 && (
               <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
