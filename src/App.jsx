@@ -55,6 +55,19 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // THEME (NEW)
+  const [isDark, setIsDark] = useState(() => {
+    return (typeof window !== "undefined" && localStorage.getItem("theme")) === "dark";
+  });
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) root.classList.add("dark");
+    else root.classList.remove("dark");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+    }
+  }, [isDark]);
+
   // fixed map (no zoom-on-select)
   const [center] = useState([-99.5, 31.0]);
   const [zoom] = useState(3.8);
@@ -160,9 +173,18 @@ export default function App() {
     }
   }
 
+  // Tooltip style (theme-aware)
+  const tooltipStyle = useMemo(
+    () =>
+      isDark
+        ? { background: "#0b1220", border: "1px solid #334155", color: "#e2e8f0" } // dark surface + slate-700 border
+        : { background: "white", border: "1px solid #e2e8f0", color: "#0f172a" },
+    [isDark]
+  );
+
   return (
-    <div className="min-h-screen bg-white text-slate-900">
-      <header className="px-6 py-5 border-b border-slate-200 bg-white sticky top-0 z-10">
+    <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+      <header className="px-6 py-5 border-b border-slate-200 bg-white sticky top-0 z-10 dark:bg-slate-900 dark:border-slate-700">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div>
@@ -173,39 +195,53 @@ export default function App() {
                 Click a county or search to see forecasted <em className="not-italic font-medium">expected losses</em> (home wind + flood).
               </p>
             </div>
-            
           </div>
 
-          {/* Search with suggestions */}
-          <div className="w-96 relative">
-            <input
-              value={q}
-              onChange={(e) => { setQ(e.target.value); setOpenSug(true); setActiveSug(0); }}
-              onKeyDown={onSearchKeyDown}
-              onBlur={() => setTimeout(() => setOpenSug(false), 120)}
-              placeholder="Search county (e.g., Collin)"
-              className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black autofill:bg-white"
-            />
-            {openSug && suggestions.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                {suggestions.map((s, idx) => (
-                  <button
-                    key={s.fips}
-                    className={`w-full text-left px-4 py-2 hover:bg-blue-50 ${idx === activeSug ? "bg-blue-50" : ""}`}
-                    onMouseDown={(e) => { e.preventDefault(); selectWithoutZoom(s.fips, s.name); setOpenSug(false); }}
-                    title={`County: ${s.name}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium">{s.name}</div>
-                        <div className="text-xs text-slate-500">FIPS {s.fips}</div>
+          {/* RIGHT: Theme toggle + Search */}
+          <div className="flex items-center gap-3">
+            {/* THEME TOGGLE (NEW) */}
+            <button
+              onClick={() => setIsDark((v) => !v)}
+              className="rounded-xl border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              aria-label="Toggle theme"
+              title={isDark ? "Switch to Light mode" : "Switch to Dark mode"}
+            >
+              {isDark ? "🌞 Light" : "🌙 Dark"}
+            </button>
+
+            {/* Search with suggestions */}
+            <div className="w-96 relative">
+              <input
+                value={q}
+                onChange={(e) => { setQ(e.target.value); setOpenSug(true); setActiveSug(0); }}
+                onKeyDown={onSearchKeyDown}
+                onBlur={() => setTimeout(() => setOpenSug(false), 120)}
+                placeholder="Search county (e.g., Collin)"
+                className="w-full rounded-xl border border-slate-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black autofill:bg-white
+                           dark:bg-slate-800 dark:text-slate-100 dark:border-slate-600 placeholder-slate-400 dark:placeholder-slate-400"
+              />
+              {openSug && suggestions.length > 0 && (
+                <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden
+                                dark:bg-slate-800 dark:border-slate-700">
+                  {suggestions.map((s, idx) => (
+                    <button
+                      key={s.fips}
+                      className={`w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-slate-700 ${idx === activeSug ? "bg-blue-50 dark:bg-slate-700" : ""}`}
+                      onMouseDown={(e) => { e.preventDefault(); selectWithoutZoom(s.fips, s.name); setOpenSug(false); }}
+                      title={`County: ${s.name}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium">{s.name}</div>
+                          <div className="text-xs text-slate-500">FIPS {s.fips}</div>
+                        </div>
+                        <div className="text-blue-700 font-semibold">{fmtCurrencyShort(s.el_total_sum)}</div>
                       </div>
-                      <div className="text-blue-700 font-semibold">{fmtCurrencyShort(s.el_total_sum)}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -213,12 +249,12 @@ export default function App() {
       <main className="grid md:grid-cols-5 gap-6 p-6">
         {/* LEFT: map + notes */}
         <section className="md:col-span-3 space-y-4">
-          <div className="rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+          <div className="rounded-2xl bg-white border border-slate-200 p-3 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <div className="w-full h-[560px]">
               <ComposableMap
                 projection="geoAlbersUsa"
                 projectionConfig={{ scale: 1000 }}
-                style={{ background: "white", borderRadius: "1rem", width: "100%", height: "100%" }}
+                style={{ background: isDark ? "#0f172a" : "white", borderRadius: "1rem", width: "100%", height: "100%" }}
               >
                 <ZoomableGroup center={center} zoom={zoom} minZoom={3.2} maxZoom={10} transitionDuration={0}>
                   <Geographies geography={US_COUNTIES_TOPO}>
@@ -238,7 +274,7 @@ export default function App() {
                           const fips = String(geo.id).padStart(5, "0");
                           const meta = countyIndex.get(fips);
                           const name = geo.properties?.NAME || meta?.name || fips;
-                          const baseFill = "rgb(243, 244, 246)";
+                          const baseFill = isDark ? "rgb(51, 65, 85)" : "rgb(243, 244, 246)"; // slate-600 vs gray-100
                           const fill = meta ? shade(meta.el_total_sum || 0, maxSum) : baseFill;
                           const isActive = selected?.fips === fips;
                           return (
@@ -247,7 +283,7 @@ export default function App() {
                               geography={geo}
                               onClick={() => selectWithoutZoom(fips, name)}
                               style={{
-                                default: { fill, outline: "none", stroke: isActive ? "#2563eb" : "#cbd5e1", strokeWidth: isActive ? 1.4 : 0.7, transition: "stroke 120ms ease" },
+                                default: { fill, outline: "none", stroke: isActive ? "#2563eb" : (isDark ? "#475569" : "#cbd5e1"), strokeWidth: isActive ? 1.4 : 0.7, transition: "stroke 120ms ease" },
                                 hover:   { fill, outline: "none", stroke: "#1d4ed8", strokeWidth: 1.1 },
                                 pressed: { fill, outline: "none", stroke: "#1e40af", strokeWidth: 1.3 },
                               }}
@@ -261,13 +297,13 @@ export default function App() {
                 </ZoomableGroup>
               </ComposableMap>
             </div>
-            <div className="text-center mt-2 text-xl font-semibold tracking-wide text-slate-700">TEXAS</div>
+            <div className="text-center mt-2 text-xl font-semibold tracking-wide text-slate-700 dark:text-slate-300">TEXAS</div>
           </div>
 
           {/* Method notes */}
-          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <h3 className="text-base font-semibold mb-2">Method notes</h3>
-            <ul className="text-sm text-slate-700 list-disc pl-5 space-y-1">
+            <ul className="text-sm text-slate-700 dark:text-slate-200 list-disc pl-5 space-y-1">
               <li><strong>EL (Expected Loss)</strong> = loss forecast per time step (USD).</li>
               <li><strong>Wind intensity</strong> = clamp(wind_ms / 25, 0..1.5) • <strong>Flood intensity</strong> = clamp(rain_mm / 50, 0..1.5)</li>
               <li><strong>Vulnerability</strong> = normalized FEMA NRI <code>EAL_total</code>.</li>
@@ -280,18 +316,18 @@ export default function App() {
 
         {/* RIGHT: county panel + list */}
         <aside className="md:col-span-2 space-y-4">
-          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <h2 className="text-lg font-medium mb-2">County</h2>
             {!selected && <p className="text-slate-500">Click a county on the map.</p>}
             {selected && (
-              <div className="text-slate-800">
+              <div className="text-slate-800 dark:text-slate-100">
                 <div className="text-2xl font-semibold">{selected.name}</div>
                 <div className="text-slate-500">FIPS: {selected.fips}</div>
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <h2 className="text-lg font-medium mb-3">Expected Loss (next 5 days)</h2>
             {!series && !error && (
               <div className="h-80 flex items-center justify-center text-slate-400">
@@ -307,13 +343,11 @@ export default function App() {
                     <XAxis dataKey="dt" tickFormatter={fmtMonthYY} interval="preserveStartEnd" minTickGap={28}>
                       <Label value="Forecast time (UTC)" offset={-18} position="insideBottom" />
                     </XAxis>
-                    <YAxis tickFormatter={fmtCurrencyShort} width={72}>
-                      
-                    </YAxis>
+                    <YAxis tickFormatter={fmtCurrencyShort} width={72}></YAxis>
                     <Tooltip
                       formatter={(v, k) => [fmtCurrencyShort(v), k === "cum" ? "Cumulative" : "Step EL"]}
                       labelFormatter={(l) => `UTC ${fmtMonthYY(l)}`}
-                      contentStyle={{ background: "white", border: "1px solid #e2e8f0", color: "#0f172a" }}
+                      contentStyle={tooltipStyle}
                     />
                     {/* Cumulative curve */}
                     <Line type="monotone" dataKey="cum" stroke="#2563eb" strokeWidth={2} dot={false} />
@@ -323,18 +357,18 @@ export default function App() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+          <div className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm dark:bg-slate-800 dark:border-slate-700">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-medium">Top Risk Counties</h2>
               <div className="text-sm text-slate-500 pr-2">5-day EL</div>
             </div>
             {loading && <div className="text-slate-500">Loading…</div>}
             {topSorted && (
-              <ul className="divide-y divide-slate-200">
+              <ul className="divide-y divide-slate-200 dark:divide-slate-700">
                 {topSorted.slice(0, 12).map((c) => (
                   <li key={c.fips} className="py-2 flex items-center justify-between">
                     <button
-                      className="text-left text-slate-800 hover:text-blue-700"
+                      className="text-left text-slate-800 dark:text-slate-100 hover:text-blue-700"
                       onClick={() => selectWithoutZoom(c.fips, c.name || c.fips)}
                       title={`County: ${c.name || c.fips}`}
                     >
