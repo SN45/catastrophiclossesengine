@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark baseline */
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; background: #0b0f14; margin: 0; }
